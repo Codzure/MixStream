@@ -5,7 +5,7 @@ import { Header } from '../components/Layout/Header';
 import { UploadModal } from '../components/Upload/UploadModal';
 import styles from './Dashboard.module.css';
 import { MixCard } from '../components/MixCard/MixCard'
-import { MediaPlayer } from '../components/Player/MediaPlayer'
+import MediaPlayer from '../components/Player/MediaPlayer'
 import { supabase, getStreamingUrl, testDatabaseConnection } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { MusicMix } from '../types'
@@ -247,7 +247,14 @@ export const Dashboard: React.FC = () => {
               </div>
               <h2 className="text-xl font-bold text-white">Now Playing</h2>
             </div>
-            <MediaPlayer mix={selectedMix} streamingUrl={streamingUrl} />
+            <MediaPlayer media={selectedMix ? {
+              id: selectedMix.id,
+              title: selectedMix.title,
+              artist: selectedMix.artist || 'Unknown Artist',
+              coverArt: selectedMix.thumbnail_url || selectedMix.coverUrl,
+              url: streamingUrl || '',
+              type: selectedMix.file_type as 'audio' | 'video'
+            } : null} />
           </motion.div>
         )}
 
