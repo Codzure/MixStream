@@ -36,6 +36,50 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentStreamingUrl, setCurrentStreamingUrl] = useState(streamingUrl);
+
+  // Handle streaming URL changes
+  useEffect(() => {
+    if (streamingUrl && streamingUrl !== currentStreamingUrl) {
+      setCurrentStreamingUrl(streamingUrl);
+      
+      // Reset media element when URL changes
+      const media = mediaRef.current;
+      if (media) {
+        media.pause();
+        media.load();
+        
+        // Reset state
+        setIsPlaying(false);
+        setCurrentTime(0);
+        setDuration(0);
+      }
+    }
+  }, [streamingUrl, currentStreamingUrl]);
+
+  // Initialize media element when component mounts or URL changes
+  useEffect(() => {
+    const media = mediaRef.current;
+    if (!media) return;
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+      setError(null);
+    };
+
+    const handleError = () => {
+      setIsLoading(false);
+      setError('Failed to load media. Please try again.');
+    };
+
+    media.addEventListener('canplay', handleCanPlay);
+    media.addEventListener('error', handleError);
+
+    return () => {
+      media.removeEventListener('canplay', handleCanPlay);
+      media.removeEventListener('error', handleError);
+    };
+  }, [currentStreamingUrl]);
 
   const formatTime = useCallback((timeInSeconds: number) => {
     const minutes = Math.floor(timeInSeconds / 60);
@@ -109,23 +153,43 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
   const togglePlayPause = useCallback(async () => {
     const media = mediaRef.current;
     if (!media) return;
-
+    
     try {
       if (media.paused) {
+        setIsLoading(true);
+        setError(null);
+        
+        // Initialize audio context first
         await initAudioContext();
+        
+        // For video elements, ensure they're visible and ready
+        if (coverArt && media instanceof HTMLVideoElement) {
+          media.playsInline = true;
+          media.muted = false;
+          media.preload = 'auto';
+          media.load();
+        }
+        
+        // Start playback
         await media.play();
         setIsPlaying(true);
-        setIsLoading(false);
+        
+        // If we have a video, ensure it's visible
+        if (coverArt && media instanceof HTMLVideoElement) {
+          media.style.opacity = '1';
+        }
       } else {
         media.pause();
         setIsPlaying(false);
       }
-    } catch (error) {
-      console.error('Error toggling play/pause:', error);
-      setError('Failed to play media');
+    } catch (err) {
+      console.error('Error toggling play/pause:', err);
+      setError('Failed to play media. Please try again.');
+      setIsPlaying(false);
+    } finally {
       setIsLoading(false);
     }
-  }, [initAudioContext]);
+  }, [initAudioContext, coverArt]);
 
   const handleVolumeChange = useCallback((value: number) => {
     const newVolume = value;
@@ -188,58 +252,64 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
   }, []);
 
   const startVisualization = useCallback(() => {
+    if (!canvasRef.current || !analyserRef.current || !dataArrayRef.current) return;
+
     const canvas = canvasRef.current;
-    const analyser = analyserRef.current;
-
-    if (!canvas || !analyser) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const analyser = analyserRef.current;
+    const dataArray = dataArrayRef.current;
     const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
 
-    const draw = () => {
-      animationFrameRef.current = requestAnimationFrame(draw);
-
+    const renderFrame = () => {
+      animationFrameRef.current = requestAnimationFrame(renderFrame);
+      
+      // Get frequency data
       analyser.getByteFrequencyData(dataArray);
-
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw visualizer bars
+      
+      // Clear canvas with semi-transparent black for trail effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
       const barWidth = (canvas.width / bufferLength) * 2.5;
       let x = 0;
 
       for (let i = 0; i < bufferLength; i++) {
-        const barHeight = (dataArray[i] / 255) * canvas.height;
-
+        const barHeight = (dataArray[i] / 255) * canvas.height * 0.8; // Scale to canvas height
+        
         // Create gradient for each bar
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, `hsl(${i * 2}, 100%, 50%)`);
-        gradient.addColorStop(1, `hsl(${i * 2 + 30}, 100%, 50%)`);
-
+        const gradient = ctx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
+        gradient.addColorStop(0, '#6366f1'); // Indigo-500
+        gradient.addColorStop(0.7, '#8b5cf6'); // Purple-500
+        gradient.addColorStop(1, '#ec4899'); // Pink-500
+        
         ctx.fillStyle = gradient;
-        ctx.fillRect(
-          x,
-          canvas.height - barHeight,
-          barWidth - 1,
-          barHeight
-        );
-
+        const barX = x + (barWidth / 2);
+        const barY = canvas.height - barHeight;
+        const barW = barWidth * 0.8; // Slightly narrower bars with spacing
+        
+        // Draw rounded rectangle for each bar
+        const radius = 2;
+        ctx.beginPath();
+        ctx.moveTo(barX + radius, barY);
+        ctx.lineTo(barX + barW - radius, barY);
+        ctx.quadraticCurveTo(barX + barW, barY, barX + barW, barY + radius);
+        ctx.lineTo(barX + barW, canvas.height - radius);
+        ctx.quadraticCurveTo(barX + barW, canvas.height, barX + barW - radius, canvas.height);
+        ctx.lineTo(barX + radius, canvas.height);
+        ctx.quadraticCurveTo(barX, canvas.height, barX, canvas.height - radius);
+        ctx.lineTo(barX, barY + radius);
+        ctx.quadraticCurveTo(barX, barY, barX + radius, barY);
+        ctx.closePath();
+        ctx.fill();
+        
         x += barWidth + 1;
       }
     };
 
-    // Start the animation loop
-    draw();
-
-    // Cleanup function
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
+    // Start the animation
+    renderFrame();
   }, []);
 
   useEffect(() => {
@@ -307,19 +377,55 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
   }, []);
 
   const renderMediaElement = () => {
+    if (!currentStreamingUrl) return null;
+    
     const commonProps = {
-      src: streamingUrl,
-      preload: 'metadata',
-      onPlay: () => setIsPlaying(true),
-      onPause: () => setIsPlaying(false),
+      src: currentStreamingUrl,
+      preload: 'auto',
+      playsInline: true,
+      onPlay: () => {
+        setIsPlaying(true);
+        setIsLoading(false);
+      },
+      onPause: () => {
+        setIsPlaying(false);
+        setIsLoading(false);
+      },
       onTimeUpdate: handleTimeUpdate,
       onEnded: handleEnded,
-      onError: handleError,
+      onError: (e: React.SyntheticEvent<HTMLMediaElement>) => {
+        console.error('Media error:', e);
+        const error = e.currentTarget.error;
+        console.error('Media error details:', {
+          code: error?.code,
+          message: error?.message
+        });
+        setError('Failed to load media. The file may be corrupted or unsupported.');
+        setIsLoading(false);
+      },
       onLoadedMetadata: () => {
         const media = mediaRef.current;
-        if (media) setDuration(media.duration);
+        if (media) {
+          setDuration(media.duration);
+          // For video elements, ensure they're visible
+          if (coverArt && media instanceof HTMLVideoElement) {
+            media.style.opacity = '1';
+          }
+        }
       },
-      className: styles.mediaElement,
+      onWaiting: () => setIsLoading(true),
+      onCanPlay: () => {
+        setIsLoading(false);
+        const media = mediaRef.current;
+        if (media && media.paused && isPlaying) {
+          media.play().catch(console.error);
+        }
+      },
+      className: `${styles.mediaElement} ${coverArt ? styles.videoElement : ''}`,
+      style: {
+        opacity: coverArt ? '1' : '1',
+        transition: 'opacity 0.3s ease',
+      },
     };
 
     if (coverArt) {
@@ -329,20 +435,32 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
           ref={mediaRef as React.RefObject<HTMLVideoElement>}
           poster={coverArt} 
           playsInline 
+          crossOrigin="anonymous"
         />
       );
     }
     
-    return <audio {...commonProps} ref={mediaRef as React.RefObject<HTMLAudioElement>} />;
+    return (
+      <audio 
+        {...commonProps} 
+        ref={mediaRef as React.RefObject<HTMLAudioElement>}
+        crossOrigin="anonymous"
+      />
+    );
   };
 
   const renderVisualizer = () => (
     <div className={styles.visualizerContainer}>
+      {coverArt && (
+        <div className={styles.videoContainer}>
+          {renderMediaElement()}
+        </div>
+      )}
       <canvas
         ref={canvasRef}
-        className={styles.visualizer}
-        width={800}
-        height={200}
+        className={styles.visualizerCanvas}
+        width={window.innerWidth}
+        height={150}
       />
     </div>
   );
@@ -433,7 +551,9 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
 
   return (
     <div className={styles.mediaPlayer}>
-      {coverArt && (
+      {renderVisualizer()}
+      
+      {!coverArt && (
         <div className={styles.coverArtContainer}>
           <img
             src={coverArt}
@@ -443,15 +563,13 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ mix, streamingUrl }) =
         </div>
       )}
       
-      {renderVisualizer()}
-      
       <div className={styles.info}>
         <h3 className={styles.title}>{title}</h3>
         {artist && <p className={styles.artist}>{artist}</p>}
       </div>
       
       {renderControls()}
-      {renderMediaElement()}
+      {!coverArt && renderMediaElement()}
     </div>
   );
 };
