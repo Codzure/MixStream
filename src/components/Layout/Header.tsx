@@ -48,16 +48,18 @@ export const Header: React.FC<HeaderProps> = ({ onUploadClick }) => {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
-            {/* Upload Button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onUploadClick}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <Upload className="h-5 w-5" />
-              <span className="hidden sm:inline">Upload</span>
-            </motion.button>
+            {/* Upload Button - Only visible for specific user */}
+            {user?.email === 'leonard.mutugi.m@gmail.com' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onUploadClick}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <Upload className="h-5 w-5" />
+                <span className="hidden sm:inline">Upload</span>
+              </motion.button>
+            )}
 
             {/* Notifications */}
             <motion.button

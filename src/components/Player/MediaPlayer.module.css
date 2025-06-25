@@ -1,15 +1,28 @@
 .mediaPlayer {
   position: relative;
   width: 100%;
-  max-width: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  border-radius: 16px;
+  background: #1a1a1a;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+}
+
+.videoContainer {
+  width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  background-color: #000;
+}
+
+.mediaPlayer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+  box-shadow: none;
+  background: #000;
 }
 
 .mediaPlayer:hover {
@@ -31,7 +44,26 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .videoContainer {
+    height: 200px;
+  }
+  
+  .controls {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+  
+  .progressContainer {
+    height: 2px;
+  }
+  
+  .volumeControls {
+    display: none;
+  }
 }
 
 .mediaElement {
@@ -47,7 +79,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .mediaContainer {
@@ -73,6 +105,8 @@
   gap: 1rem;
   background: rgba(0, 0, 0, 0.5);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 .secondaryControls {
@@ -83,171 +117,158 @@
 
 .volumeControls {
   display: flex;
+}
+
+.playButton {
+  width: 40px;
+  height: 40px;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-left: 1rem;
+  justify-content: center;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.playButton:hover {
+  background: var(--primary-dark);
+}
+
+.playButton:active {
+  transform: scale(0.95);
+}
+
+.playButton svg {
+  width: 24px;
+  height: 24px;
 }
 
 .progressContainer {
-  --progress-width: 0%;
-  width: 100%;
+  flex: 1;
   height: 4px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
   cursor: pointer;
   position: relative;
-  margin-bottom: 0.5rem;
 }
 
 .progressBar {
   height: 100%;
-  width: 100%;
-  position: relative;
+  background: var(--primary);
   border-radius: 2px;
-  overflow: hidden;
-}
-
-.progressBarFill {
-  height: 100%;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  border-radius: 2px;
-  width: var(--progress-width, 0%);
-  transition: width 0.1s ease;
-}
-
-.progressHandle {
-  width: 12px;
-  height: 12px;
-  background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 50%;
-  right: -6px;
-  transform: translateY(-50%);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  cursor: pointer;
-}
-
-.progressContainer:hover .progressHandle {
-  opacity: 1;
-}
-
-.timeInfo {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: -0.5rem;
-}
-
-.mainControls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.controlButton {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.controlButton:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: scale(1.1);
-}
-
-.controlButton:active {
-  transform: scale(0.95);
-}
-
-.playButton {
-  background: white;
-  color: #1e1b4b;
-  width: 3rem;
-  height: 3rem;
-}
-
-.playButton:hover {
-  background: #e0e0e0;
-  transform: scale(1.05);
+  transition: width 0.2s ease;
 }
 
 .volumeContainer {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: auto;
+}
+
+.volumeButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.volumeButton:hover {
+  color: var(--primary);
+}
+
+.volumeButton:active {
+  transform: scale(0.95);
 }
 
 .volumeSlider {
-  width: 80px;
+  width: 100px;
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
-  outline: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.volumeContainer:hover .volumeSlider {
-  opacity: 1;
+  cursor: pointer;
 }
 
 .volumeSlider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px;
   height: 12px;
-  background: white;
+  background: var(--primary);
   border-radius: 50%;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
-.volumeSlider:hover::-webkit-slider-thumb {
-  opacity: 1;
+.volumeSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.volumeSlider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
+.fullscreenButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.fullscreenButton:hover {
+  color: var(--primary);
+}
+
+.fullscreenButton:active {
+  transform: scale(0.95);
+}
+
+.fullscreenButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.error {
+  padding: 1rem;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.errorIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--danger);
 }
 
 .visualizerContainer {
-  position: relative;
-  width: 100%;
-  min-height: 150px;
-  background: transparent;
-  overflow: hidden;
-  border-radius: 12px 12px 0 0;
-}
-
-.audioVisualizer {
-  position: relative;
   width: 100%;
   height: 150px;
-  background: linear-gradient(135deg, #0f172a, #1e1b4b);
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .visualizer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
   width: 100%;
-  height: 100px;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.7;
-  transition: opacity 0.3s ease;
-  transform: scaleY(1.2);
-  transform-origin: bottom;
+  height: 100%;
 }
 
 .visualizerCanvas {
